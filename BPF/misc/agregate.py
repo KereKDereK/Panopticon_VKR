@@ -1,6 +1,8 @@
 import sqlite3
 import sys
 import os
+import json
+import datetime
 
 syscall_groups = {
     'file_operations': [0, 1, 2, 3, 85, 257, 303, 304, 319, 133, 259, 82, 264, 316, 76, 77, 285, 83, 258, 84, 79, 80, 81, 161, 78, 217, 212, 86,
@@ -13,6 +15,16 @@ syscall_groups = {
                            126, 125, 205, 211, 218, 158, 134, 157, 317, 101, 310, 311, 312, 272], 
     'network_operations': [41, 53, 54, 55, 51, 52, 49, 50, 43, 288, 42, 48, 45, 47, 299, 44, 46, 307, 170, 171, 321],
 }
+
+syscalls_dict = {}
+with open("./syscalls.json", "r") as sys_json:
+    syscalls_dict = json.loads(sys_json.read())
+
+def timestamp_to_human_time(timestamp):
+    timestamp_in_seconds = timestamp / 1e9
+    dt = datetime.datetime.fromtimestamp(timestamp_in_seconds)
+    time_str = dt.strftime('%d-%m-%Y %H:%M:%S.%f')
+    return time_str
 
 def process_results(session_id):
     conn = sqlite3.connect('../filters/panopticon.db')
@@ -55,12 +67,17 @@ def verbose_results():
     cursor.execute(query)
     results = cursor.fetchall()
 
-    print("\tID\t\tTIMESTAMP\t\tSTACKTRACE")
+    print("\tID\t\tTIMESTAMP\t\t\t\tSTACKTRACE")
     for row in results:
         fake_id, id, tstmp, stacktrace = row
-        print(f"\t{id}\t\t{tstmp}\t\t")
+        print(f"\t{id} {syscalls_dict[int(id)]}\t\t\t\t{timestamp_to_human_time(tstmp)}\t\t")
+        counter = 1
         for line in stacktrace.splitlines():
-            print(f"\t\t\t\t\t\t{line}")
+            if counter == 1:
+                counter = 0
+                print(f"\t\t\t\t\t\t\t{tstmp}\t\t\t{line}")
+            print(f"\t\t\t\t\t\t\t\t\t\t\t\t{line}")
+
 
 def network_results(session_id):
     conn = sqlite3.connect('../filters/panopticon.db')
